@@ -1,9 +1,9 @@
-const http = require("http");
+const express = require("express");
 const https = require("https");
 const icy = require("icy");
 const fs = require("fs");
 const path = require("path");
-const querystring = require("querystring");
+const bodyParser = require("body-parser");
 
 // Load config.json file
 const configPath = path.join(__dirname, "config.json");
@@ -19,90 +19,69 @@ try {
 
 const port = 3000;
 
-// Serve HTML and audio stream
-const server = http.createServer((req, res) => {
-  if (req.url === "/") {
-    const filePath = path.join(__dirname, "index.html");
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end("Failed to load index.html");
-      } else {
-        res.writeHead(200, { "Content-Type": "text/html" });
-        res.end(data);
-      }
-    });
-  } else if (req.url === "/modify") {
-    const filePath = path.join(__dirname, "modify.html");
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end("Failed to load modify.html");
-      } else {
-        res.writeHead(200, { "Content-Type": "text/html" });
-        res.end(data);
-      }
-    });
-  } else if (req.url === "/stream") {
-    https
-      .get(streamUrl, (streamRes) => {
-        res.writeHead(200, {
-          "Content-Type": "audio/mpeg",
-          "Access-Control-Allow-Origin": "*",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        });
-        streamRes.pipe(res);
-      })
-      .on("error", (err) => {
-        console.error("Stream error:", err);
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end("Failed to fetch stream.");
+const app = express();
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve HTML files
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/modify", (req, res) => {
+  res.sendFile(path.join(__dirname, "modify.html"));
+});
+
+// Serve audio stream
+app.get("/stream", (req, res) => {
+  https
+    .get(streamUrl, (streamRes) => {
+      res.writeHead(200, {
+        "Content-Type": "audio/mpeg",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       });
-  } else if (req.url === "/metadata") {
-    icy.get(streamUrl, (res1) => {
-      res1.on("metadata", (metadata) => {
-        const parsed = icy.parse(metadata);
-
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(parsed));
-      });
+      streamRes.pipe(res);
+    })
+    .on("error", (err) => {
+      console.error("Stream error:", err);
+      res.status(500).send("Failed to fetch stream.");
     });
-  } else if (req.url === "/modify_stream" && req.method === "POST") {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
+});
+
+// Get metadata
+app.get("/metadata", (req, res) => {
+  icy.get(streamUrl, (res1) => {
+    res1.on("metadata", (metadata) => {
+      const parsed = icy.parse(metadata);
+      res.json(parsed);
     });
-    req.on("end", () => {
-      const postData = querystring.parse(body);
-      const { id, pwd, newStreamUrl } = postData;
+  });
+});
 
-      // Validate ID and password
-      if (id === admin.id && pwd === admin.password) {
-        streamUrl = newStreamUrl;
+// Modify stream URL
+app.post("/modify_stream", (req, res) => {
+  const { id, pwd, newStreamUrl } = req.body;
 
-        // Update config.json
-        config.streamUrl = newStreamUrl;
-        fs.writeFile(configPath, JSON.stringify(config), (err) => {
-          if (err) {
-            console.error("Error updating config.json:", err);
-          }
-        });
+  // Validate ID and password
+  if (id === admin.id && pwd === admin.password) {
+    streamUrl = newStreamUrl;
 
-        res.writeHead(200, { "Content-Type": "text/plain" });
-        res.end("Stream URL updated successfully.");
-      } else {
-        res.writeHead(403, { "Content-Type": "text/plain" });
-        res.end("Invalid ID or password.");
+    // Update config.json
+    config.streamUrl = newStreamUrl;
+    fs.writeFile(configPath, JSON.stringify(config), (err) => {
+      if (err) {
+        console.error("Error updating config.json:", err);
       }
     });
+
+    res.send("Stream URL updated successfully.");
   } else {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not found");
+    res.status(403).send("Invalid ID or password.");
   }
 });
 
 // Start server
-server.listen(port, () => {
+app.listen(port, () => {
   console.log(`✅ Server running at http://localhost:${port}`);
 });

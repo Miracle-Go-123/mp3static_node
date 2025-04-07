@@ -10,6 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
     "http": "^0.0.1-security",
     "https": "^1.0.0",
     "icy": "^2.1.0"
