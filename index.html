@@ -16,19 +16,13 @@
     <div id="metadata">Waiting for track info...</div>
 
     <script>
-      // ✅ Dynamic WebSocket URL (works locally & with ngrok)
-      const protocol = location.protocol === "https:" ? "wss" : "ws";
-      const socket = new WebSocket(`${protocol}://${location.host}`);
-
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        document.getElementById("metadata").textContent =
-          data.StreamTitle || "No metadata available";
-      };
-
-      socket.onerror = (err) => {
-        console.error("WebSocket error:", err);
-      };
+      // fetch metadata asynchronously
+      fetch("/metadata")
+        .then((response) => response.json())
+        .then((data) => {
+          const metadataDiv = document.getElementById("metadata");
+          metadataDiv.innerHTML = `<strong>${data.StreamTitle}</strong>`;
+        });
     </script>
   </body>
 </html>

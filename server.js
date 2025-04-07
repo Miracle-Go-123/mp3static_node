@@ -1,6 +1,5 @@
 const http = require("http");
 const https = require("https");
-const WebSocket = require("ws");
 const icy = require("icy");
 const fs = require("fs");
 const path = require("path");
@@ -38,37 +37,19 @@ const server = http.createServer((req, res) => {
         res.writeHead(500, { "Content-Type": "text/plain" });
         res.end("Failed to fetch stream.");
       });
+  } else if (req.url === "/metadata") {
+    icy.get(streamUrl, (res1) => {
+      res1.on("metadata", (metadata) => {
+        const parsed = icy.parse(metadata);
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(parsed));
+      });
+    });
   } else {
     res.writeHead(404, { "Content-Type": "text/plain" });
     res.end("Not found");
   }
-});
-
-// WebSocket server
-const wss = new WebSocket.Server({ server });
-
-// Broadcast metadata to all connected clients
-wss.on("connection", (ws) => {
-  console.log("🔌 Client connected via WebSocket");
-
-  // Connect to ICY metadata stream
-  icy.get(streamUrl, (res) => {
-    res.on("metadata", (metadata) => {
-      const parsed = icy.parse(metadata);
-      const message = JSON.stringify(parsed);
-
-      // Broadcast to all connected clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
-    });
-  });
-
-  ws.on("close", () => {
-    console.log("❌ Client disconnected");
-  });
 });
 
 // Start server
