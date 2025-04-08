@@ -2,26 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Radio Stream + Metadata</title>
+    <title>Streaming App</title>
   </head>
   <body>
-    <h1>🎧 Eternity Ready Radio</h1>
+    <h1>🎧 Welcome to the Streaming App</h1>
 
-    <audio controls autoplay>
+    <audio id="audio" controls autoplay onerror="handleStreamError()">
       <source src="/stream" type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
+    <p id="status"></p>
 
     <h2>Now Playing:</h2>
     <div id="metadata">Waiting for track info...</div>
 
     <script>
+      function handleStreamError() {
+        console.error("Stream error occurred. Retrying...");
+        const audio = document.getElementById("audio");
+        const status = document.getElementById("status");
+
+        // Display error message
+        status.textContent = "Stream error occurred. Retrying...";
+
+        // Retry loading the stream
+        setTimeout(() => {
+          audio.load(); // Reload the stream
+          audio.play().catch((err) => {
+            console.error("Error while retrying stream:", err);
+            status.textContent =
+              "Failed to reconnect. Please refresh the page.";
+          });
+        }, 5000); // Retry after 5 seconds
+      }
+
       // fetch metadata asynchronously
       fetch("/metadata")
         .then((response) => response.json())
         .then((data) => {
           const metadataDiv = document.getElementById("metadata");
-          metadataDiv.innerHTML = `<strong>${data.StreamTitle}</strong>`;
+          metadataDiv.innerHTML = `<strong>${data.StreamTitle}</strong><br/><label>${data.bitRate}</label>`;
         });
     </script>
   </body>

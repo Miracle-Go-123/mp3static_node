@@ -54,6 +54,11 @@ app.get("/metadata", (req, res) => {
   icy.get(streamUrl, (res1) => {
     res1.on("metadata", (metadata) => {
       const parsed = icy.parse(metadata);
+
+      // Extract bit rate if available
+      const bitRate = res1.headers["icy-br"]; // ICY bit rate header
+      parsed.bitRate = bitRate ? `${bitRate} kbps` : "";
+
       res.json(parsed);
     });
   });
