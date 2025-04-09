@@ -19,12 +19,9 @@ router.get('/', async (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        // Handle ICY metadata if requested
-        const wantsMetadata = req.headers['icy-metadata'] === '1';
-
-        // Fetch the stream
+        // Fetch the stream with icy metadata
         const response = await fetch(config.streamUrl, {
-            headers: wantsMetadata ? { 'Icy-MetaData': '1' } : {}
+            headers: { 'Icy-MetaData': '1' }
         });
 
         // Pipe the response directly to the client
