@@ -24,7 +24,7 @@
           const formData = new FormData(event.target);
           const data = new URLSearchParams(formData);
 
-          fetch("/modify_stream", {
+          fetch("/update", {
             method: "POST",
             body: data,
           })
