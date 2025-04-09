@@ -2,6 +2,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const router = express.Router();
 const Config = require('../config');
+const icy = require('icy');
 
 router.get('/', async (req, res) => {
     try {
@@ -19,26 +20,42 @@ router.get('/', async (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        // Fetch the stream with icy metadata
-        const response = await fetch(config.streamUrl, {
-            headers: { 'Icy-MetaData': '1' }
+        icy.get(config.streamUrl, function (response) {
+
+            response.on('metadata', (metadata) => {
+                var parsed = icy.parse(metadata);
+                console.log({ parsed });
+            });
+
+            // Pipe the response directly to the client
+            response.pipe(res);
+
+            // Handle client disconnect
+            req.on('close', () => {
+                response.destroy();
+            });
         });
 
-        console.log({
-            'icy-br': response.headers.get('icy-br') || '',
-            'ice-audio-info': response.headers.get('ice-audio-info') || '',
-            'icy-name': response.headers.get('icy-name') || '',
-            'icy-pub': response.headers.get('icy-pub') || '',
-            'icy-metaint': response.headers.get('icy-metaint') || '',
-        });
+        // // Fetch the stream with icy metadata
+        // const response = await fetch(config.streamUrl, {
+        //     headers: { 'Icy-MetaData': '1' }
+        // });
 
-        // Pipe the response directly to the client
-        response.body.pipe(res);
+        // console.log({
+        //     'icy-br': response.headers.get('icy-br') || '',
+        //     'ice-audio-info': response.headers.get('ice-audio-info') || '',
+        //     'icy-name': response.headers.get('icy-name') || '',
+        //     'icy-pub': response.headers.get('icy-pub') || '',
+        //     'icy-metaint': response.headers.get('icy-metaint') || '',
+        // });
 
-        // Handle client disconnect
-        req.on('close', () => {
-            response.body.destroy();
-        });
+        // // Pipe the response directly to the client
+        // response.body.pipe(res);
+
+        // // Handle client disconnect
+        // req.on('close', () => {
+        //     response.body.destroy();
+        // });
 
     } catch (error) {
         console.error('Error streaming audio:', error);
