@@ -17,32 +17,47 @@
     <div id="metadata">Waiting for track info...</div>
 
     <script>
+      const audio = document.getElementById("audio");
+      const status = document.getElementById("status");
+      const metadataDiv = document.getElementById("metadata");
+      let currentTitle = ""; // Track the current song title
+
       function handleStreamError() {
         console.error("Stream error occurred. Retrying...");
-        const audio = document.getElementById("audio");
-        const status = document.getElementById("status");
-
-        // Display error message
         status.textContent = "Stream error occurred. Retrying...";
 
-        // Retry loading the stream
         setTimeout(() => {
-          audio.load(); // Reload the stream
+          audio.load();
           audio.play().catch((err) => {
             console.error("Error while retrying stream:", err);
             status.textContent =
               "Failed to reconnect. Please refresh the page.";
           });
-        }, 5000); // Retry after 5 seconds
+        }, 5000);
       }
 
-      // fetch metadata asynchronously
-      fetch("/metadata")
-        .then((response) => response.json())
-        .then((data) => {
-          const metadataDiv = document.getElementById("metadata");
-          metadataDiv.innerHTML = `<strong>${data.StreamTitle}</strong><br/><label>${data.bitRate}</label>`;
-        });
+      function fetchMetaData() {
+        fetch("/metadata")
+          .then((response) => response.json())
+          .then((data) => {
+            const newTitle = data.StreamTitle || "Unknown Title";
+            // Only update if the title has changed
+            if (newTitle !== currentTitle) {
+              currentTitle = newTitle;
+              metadataDiv.innerHTML = `<strong>${currentTitle}</strong>`;
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching metadata:", err);
+            metadataDiv.innerHTML = "Error loading track info";
+          });
+      }
+
+      // Initial fetch
+      fetchMetaData();
+
+      // Poll metadata every 5 seconds to check for song changes
+      setInterval(fetchMetaData, 5000);
     </script>
   </body>
 </html>
